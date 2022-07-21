@@ -24,6 +24,7 @@ class MessageService : Service() {
         private const val WHAT_TIME_REQUEST_FROM_CLIENT = 1003
         private const val WHAT_TIME_RESPONSE_FROM_HOST = 1004
         private const val WHAT_REGULAR_MESSAGE_FROM_HOST = 2001
+        private const val WHAT_FORCE_STOP_SERVICE_REQUEST_FROM_CLIENT = 9000
     }
 
     private var sendMessenger: Messenger? = null
@@ -65,6 +66,9 @@ class MessageService : Service() {
                     }
                     val msgData = Message.obtain(null, WHAT_TIME_RESPONSE_FROM_HOST, bundle)
                     service.sendMessenger!!.send(msgData)
+                }
+                WHAT_FORCE_STOP_SERVICE_REQUEST_FROM_CLIENT -> {
+                    throw Exception("Stop service")
                 }
                 else -> super.handleMessage(msg)
             }
@@ -117,6 +121,7 @@ class MessageService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        Log.d(TAG, "onDestroy")
         regularMessageHandler.removeCallbacks(regularMessageRunnable)
         stopForeground(true)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

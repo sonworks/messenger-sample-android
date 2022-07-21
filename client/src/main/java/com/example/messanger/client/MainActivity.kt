@@ -22,6 +22,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         private const val WHAT_TIME_REQUEST_FROM_CLIENT = 1003
         private const val WHAT_TIME_RESPONSE_FROM_HOST = 1004
         private const val WHAT_REGULAR_MESSAGE_FROM_HOST = 2001
+        private const val WHAT_FORCE_STOP_SERVICE_REQUEST_FROM_CLIENT = 9000
     }
 
     private var sendMessenger: Messenger? = null
@@ -47,6 +48,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            this@MainActivity.service = service
+            this@MainActivity.service?.linkToDeath(deathRecipient, 0)
+
             sendMessenger = Messenger(service)
 
             val msgData = Message.obtain(null, WHAT_INIT_REQUEST_FROM_CLIENT)
@@ -59,6 +63,19 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         }
     }
 
+    private var service: IBinder? = null
+    private var deathRecipient = object : IBinder.DeathRecipient {
+        override fun binderDied() {
+            Log.d(TAG, "binderDied")
+            if (service != null) {
+                service?.unlinkToDeath(this, 0)
+                // Restart service
+                stopService()
+                startService()
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -67,6 +84,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         receiveMessenger = Messenger(receiveHandler)
 
         findViewById<Button>(R.id.request_button).setOnClickListener(this)
+        findViewById<Button>(R.id.stop_service_button).setOnClickListener(this)
     }
 
     override fun onResume() {
@@ -86,6 +104,10 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
                     putLong("msg", System.currentTimeMillis())
                 }
                 val msgData = Message.obtain(null, WHAT_TIME_REQUEST_FROM_CLIENT, bundle)
+                sendMessenger?.send(msgData)
+            }
+            R.id.stop_service_button -> {
+                val msgData = Message.obtain(null, WHAT_FORCE_STOP_SERVICE_REQUEST_FROM_CLIENT)
                 sendMessenger?.send(msgData)
             }
         }
